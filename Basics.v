@@ -898,17 +898,17 @@ Proof. simpl. reflexivity.  Qed.
     function, but you can use two if you want.) *)
 
 Definition ltb (n m : nat) : bool :=
-  m <=? n 
+  negb (m <=? n) 
 .
 
 Notation "x <? y" := (ltb x y) (at level 70) : nat_scope.
 
 Example test_ltb1:             (ltb 2 2) = false.
-(* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity.  Qed.
 Example test_ltb2:             (ltb 2 4) = true.
-(* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity.  Qed.
 Example test_ltb3:             (ltb 4 2) = false.
-(* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity.  Qed.
 (** [] *)
 
 (* ################################################################# *)
@@ -1066,7 +1066,13 @@ Proof.
 Theorem plus_id_exercise : forall n m o : nat,
   n = m -> m = o -> n + m = m + o.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros m n o.
+  intros h1 h2.
+  rewrite -> h1.
+  rewrite -> h2.
+  simpl.
+  reflexivity.
+Qed.
 (** [] *)
 
 (** The [Admitted] command tells Coq that we want to skip trying
@@ -1114,7 +1120,12 @@ Proof.
 Theorem mult_n_1 : forall p : nat,
   p * 1 = p.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intro p.
+  rewrite <- mult_n_Sm.
+  rewrite <- mult_n_O.
+  simpl.
+  reflexivity.
+Qed.
 
 (** [] *)
 
@@ -1312,7 +1323,27 @@ Qed.
 Theorem andb_true_elim2 : forall b c : bool,
   andb b c = true -> c = true.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros b c. destruct b eqn:Eb.
+  - destruct c eqn:Ec.
+    {
+      reflexivity.
+    }
+    {
+      intros H.
+      rewrite <- H.
+      reflexivity.
+    }
+  - destruct c eqn:Ec.
+    {
+      reflexivity. 
+    }
+    {
+      intros H.
+      rewrite <- H.
+      reflexivity.
+    }
+
+Qed.
 (** [] *)
 
 (** Before closing the chapter, let's mention one final
@@ -1353,7 +1384,11 @@ Qed.
 Theorem zero_nbeq_plus_1 : forall n : nat,
   0 =? (n + 1) = false.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n. destruct n as [|n'] eqn:E.
+  - simpl.
+    reflexivity.
+  - reflexivity. 
+  Qed.
 (** [] *)
 
 (* ================================================================= *)
