@@ -172,6 +172,7 @@ Fixpoint repeat' X x count : list X :=
   | S count' => cons X x (repeat' X x count')
   end.
 
+
 (** Indeed it will.  Let's see what type Coq has assigned to [repeat']... *)
 
 Check repeat'
@@ -375,6 +376,7 @@ Notation "x ++ y" := (app x y)
 
 Definition list123''' := [1; 2; 3].
 
+Definition list123'''' : list nat:= [].
 (* ----------------------------------------------------------------- *)
 (** *** Exercises *)
 
@@ -387,17 +389,25 @@ Definition list123''' := [1; 2; 3].
 Theorem app_nil_r : forall (X:Type), forall l:list X,
   l ++ [] = l.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X l . induction l as [| n t IHl'].
+  - simpl. reflexivity.
+  - simpl. rewrite -> IHl'. reflexivity. 
+Qed.
 
 Theorem app_assoc : forall A (l m n:list A),
   l ++ m ++ n = (l ++ m) ++ n.
 Proof.
-  (* FILL IN HERE *) Admitted.
-
+  intros A l m n . induction l as [| a b IHl'].
+  - simpl. reflexivity.
+  - simpl. rewrite -> IHl'. reflexivity. 
+Qed.
 Lemma app_length : forall (X:Type) (l1 l2 : list X),
   length (l1 ++ l2) = length l1 + length l2.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X l1 l2. induction l1 as [ | n t LHl'].
+  - reflexivity.
+  - simpl. rewrite -> LHl'. reflexivity.
+Qed.
 (** [] *)
 
 (** **** Exercise: 2 stars, standard (more_poly_exercises)
@@ -407,12 +417,17 @@ Proof.
 Theorem rev_app_distr: forall X (l1 l2 : list X),
   rev (l1 ++ l2) = rev l2 ++ rev l1.
 Proof.
-  (* FILL IN HERE *) Admitted.
-
+  intros X l1 l2. induction l1 as [| n t LHl'].
+  - simpl. rewrite -> app_nil_r. reflexivity.
+  - simpl. rewrite LHl'. rewrite -> app_assoc. reflexivity. 
+Qed.
 Theorem rev_involutive : forall X : Type, forall l : list X,
   rev (rev l) = l.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X l. induction l as [| n t LHl'].
+  - reflexivity.
+  - simpl. rewrite rev_app_distr. rewrite -> LHl'. simpl. reflexivity. 
+Qed.
 (** [] *)
 
 (* ================================================================= *)
@@ -454,25 +469,24 @@ Definition fst {X Y : Type} (p : X * Y) : X :=
   match p with
   | (x, y) => x
   end.
-
 Definition snd {X Y : Type} (p : X * Y) : Y :=
   match p with
   | (x, y) => y
   end.
-
 (** The following function takes two lists and combines them
     into a list of pairs.  In other functional languages, it is often
     called [zip]; we call it [combine] for consistency with Coq's
     standard library. *)
 
-Fixpoint combine {X Y : Type} (lx : list X) (ly : list Y)
-           : list (X*Y) :=
-  match lx, ly with
-  | [], _ => []
-  | _, [] => []
-  | x :: tx, y :: ty => (x, y) :: (combine tx ty)
+Fixpoint combine {X Y : Type} (lx : list X) (ly : list Y) : list (X*Y) :=
+  match lx , ly with
+  | [] , _ => []
+  | _ , [] => []
+  | x::tx , y::ty => (x,y)::(combine tx ty)
   end.
 
+Check @combine.
+Compute (combine [1;2] [false;false;true;true]).
 (** **** Exercise: 1 star, standard, optional (combine_checks)
 
     Try answering the following questions on paper and
@@ -496,13 +510,19 @@ Fixpoint combine {X Y : Type} (lx : list X) (ly : list Y)
     Fill in the definition of [split] below.  Make sure it passes the
     given unit test. *)
 
-Fixpoint split {X Y : Type} (l : list (X*Y)) : (list X) * (list Y)
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+Fixpoint split {X Y : Type} (l : list (X*Y)) : (list X) * (list Y) :=
+  match l with
+  | nil => ([] , [])
+  | n::t => match n with
+            | (x,y) => ([x]++ (fst (split t)), [y] ++ (snd (split t)))
+            end
+end.
 
 Example test_split:
   split [(1,false);(2,false)] = ([1;2],[false;false]).
 Proof.
-(* FILL IN HERE *) Admitted.
+simpl. reflexivity.
+Qed.
 (** [] *)
 
 (* ================================================================= *)
@@ -551,18 +571,20 @@ Proof. reflexivity. Qed.
     [hd_error] function from the last chapter. Be sure that it
     passes the unit tests below. *)
 
-Definition hd_error {X : Type} (l : list X) : option X
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
-
+Definition hd_error {X : Type} (l : list X) : option X :=
+  match l with
+  | nil => None
+  | n::t => Some n
+  end.
 (** Once again, to force the implicit arguments to be explicit,
     we can use [@] before the name of the function. *)
 
 Check @hd_error : forall X : Type, list X -> option X.
 
 Example test_hd_error1 : hd_error [1;2] = Some 1.
- (* FILL IN HERE *) Admitted.
+Proof. reflexivity. Qed.
 Example test_hd_error2 : hd_error  [[1];[2]]  = Some [1].
- (* FILL IN HERE *) Admitted.
+Proof. reflexivity. Qed.
 (** [] *)
 
 (* ################################################################# *)
