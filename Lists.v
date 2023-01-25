@@ -297,7 +297,7 @@ Proof. reflexivity. Qed.
 Fixpoint nonzeros (l:natlist) : natlist :=
   match l with
   | nil => nil
-  | 0::t => nonzeros t
+  | O::t => (nonzeros t)
   | n::t => n::(nonzeros t)
 end.
 
@@ -558,7 +558,7 @@ Proof.
   - (* l = nil *)
     reflexivity.
   - (* l = cons n l' *)
-    reflexivity.  Qed.
+   simpl. reflexivity.  Qed.
 
 (** Here, the [nil] case works because we've chosen to define
     [tl nil = nil]. Notice that the [as] annotation on the [destruct]
@@ -613,7 +613,7 @@ Theorem app_assoc : forall l1 l2 l3 : natlist,
 Proof.
   intros l1 l2 l3. induction l1 as [| n l1' IHl1'].
   - (* l1 = nil *)
-    reflexivity.
+    simpl. reflexivity.
   - (* l1 = cons n l1' *)
     simpl. rewrite -> IHl1'. reflexivity.  Qed.
 
@@ -711,7 +711,7 @@ Proof.
   (* WORKED IN CLASS *)
   intros l1 l2. induction l1 as [| n l1' IHl1'].
   - (* l1 = nil *)
-    reflexivity.
+   simpl. reflexivity.
   - (* l1 = cons *)
     simpl. rewrite -> IHl1'. reflexivity.  Qed.
 
@@ -735,6 +735,8 @@ Proof.
     simpl. rewrite -> IHl'. rewrite add_comm.
     reflexivity.
 Qed.
+
+Search rev.
 
 (** For comparison, here are informal proofs of these two theorems:
 
@@ -866,19 +868,30 @@ Search (?x + ?y = ?y + ?x).
 Theorem app_nil_r : forall l : natlist,
   l ++ [] = l.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros l. induction l as [| n t IHl'].
+  - simpl. reflexivity.
+  - simpl. rewrite -> IHl'. reflexivity. 
+Qed.
 
 Theorem rev_app_distr: forall l1 l2 : natlist,
   rev (l1 ++ l2) = rev l2 ++ rev l1.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros l1 l2. induction l1 as [| n t IHl'].
+  - simpl. rewrite -> app_nil_r. reflexivity.
+  - simpl. rewrite -> IHl'. rewrite -> app_assoc. reflexivity.   
+Qed.
 
 (** An _involution_ is a function that is its own inverse. That is,
     applying the function twice yield the original input. *)
 Theorem rev_involutive : forall l : natlist,
   rev (rev l) = l.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros l . induction l as [| n t IHl'].
+  - reflexivity.
+  - simpl. rewrite rev_app_distr. rewrite ->IHl'.
+  simpl. reflexivity. 
+
+Qed.
 
 (** There is a short solution to the next one.  If you find yourself
     getting tangled up, step back and try to look for a simpler
@@ -887,14 +900,27 @@ Proof.
 Theorem app_assoc4 : forall l1 l2 l3 l4 : natlist,
   l1 ++ (l2 ++ (l3 ++ l4)) = ((l1 ++ l2) ++ l3) ++ l4.
 Proof.
-  (* FILL IN HERE *) Admitted.
-
+  intros l1 l2 l3 l4. induction l1 as [| n t IHl'].
+  - simpl. rewrite app_assoc. reflexivity.
+  - simpl. rewrite -> IHl'. reflexivity. 
+Qed.
 (** An exercise about your implementation of [nonzeros]: *)
 
 Lemma nonzeros_app : forall l1 l2 : natlist,
   nonzeros (l1 ++ l2) = (nonzeros l1) ++ (nonzeros l2).
-Proof.
-  (* FILL IN HERE *) Admitted.
+Proof.  
+  intros l1 l2. induction l1 as [| n t LHl'].
+  - simpl. reflexivity.
+  - destruct n as [| n' ].
+    {
+      simpl. rewrite -> LHl'.
+      reflexivity.
+    }
+    {
+     simpl. rewrite -> LHl'. reflexivity. 
+    }
+  
+Qed.
 (** [] *)
 
 (** **** Exercise: 2 stars, standard (eqblist)
@@ -903,25 +929,40 @@ Proof.
     lists of numbers for equality.  Prove that [eqblist l l]
     yields [true] for every list [l]. *)
 
-Fixpoint eqblist (l1 l2 : natlist) : bool
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+Fixpoint eqblist (l1 l2 : natlist) : bool :=
+  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *) 
+  match l1 , l2 with
+  | nil , nil => true
+  | nil , _ => false
+  | _  , nil => false
+  | n1::t1 , n2::t2 => if (eqb n1 n2) then (eqblist t1 t2) else false
+  end.
 
 Example test_eqblist1 :
   (eqblist nil nil = true).
- (* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 Example test_eqblist2 :
   eqblist [1;2;3] [1;2;3] = true.
-(* FILL IN HERE *) Admitted.
+  Proof. simpl. reflexivity. Qed.
 
 Example test_eqblist3 :
   eqblist [1;2;3] [1;2;4] = false.
- (* FILL IN HERE *) Admitted.
+  Proof. simpl. reflexivity. Qed.
 
 Theorem eqblist_refl : forall l:natlist,
   true = eqblist l l.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros l. induction l as [| n t IHl'].
+  - simpl. reflexivity.
+  - destruct n as [| n'].
+   {
+    simpl. rewrite -> IHl'. reflexivity.
+   }
+   {
+    simpl. rewrite IHl'. rewrite eqb_refl. reflexivity.
+   }  
+Qed.
 (** [] *)
 
 (* ================================================================= *)
@@ -934,7 +975,9 @@ Proof.
 Theorem count_member_nonzero : forall (s : bag),
   1 <=? (count 1 (1 :: s)) = true.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  simpl. reflexivity.
+Qed.
+
 (** [] *)
 
 (** The following lemma about [leb] might help you in the next
@@ -955,7 +998,16 @@ Proof.
 Theorem remove_does_not_increase_count: forall (s : bag),
   (count 0 (remove_one 0 s)) <=? (count 0 s) = true.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros s. induction s as [| n t LHb'].
+  - simpl. reflexivity.
+  - destruct n as [|n'].
+   {
+    simpl. rewrite -> leb_n_Sn. reflexivity.
+   }
+   {
+    simpl. rewrite LHb'. reflexivity.
+   }  
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars, standard, optional (bag_count_sum)
@@ -981,8 +1033,12 @@ Proof.
 Theorem involution_injective : forall (f : nat -> nat),
     (forall n : nat, n = f (f n)) -> (forall n1 n2 : nat, f n1 = f n2 -> n1 = n2).
 Proof.
-  (* FILL IN HERE *) Admitted.
-
+  intros h1 h2.
+  intros n1 n2.
+  intros h.
+  rewrite -> h2. rewrite <-h. rewrite<- h2.
+  reflexivity.
+Qed.
 (** [] *)
 
 (** **** Exercise: 2 stars, advanced (rev_injective)
@@ -995,7 +1051,12 @@ Proof.
 Theorem rev_injective : forall (l1 l2 : natlist),
   rev l1 = rev l2 -> l1 = l2.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros l1 l2.
+  intros rev.
+  rewrite <- rev_involutive. rewrite <- rev.
+  rewrite -> rev_involutive.
+  reflexivity.
+Qed.
 (** [] *)
 
 (* ################################################################# *)
@@ -1066,17 +1127,21 @@ Definition option_elim (d : nat) (o : natoption) : nat :=
     Using the same idea, fix the [hd] function from earlier so we don't
     have to pass a default element for the [nil] case.  *)
 
-Definition hd_error (l : natlist) : natoption
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+Definition hd_error (l : natlist) : natoption :=
+  match l with
+  | nil => None
+  | n::t => Some n
+  end.
+
 
 Example test_hd_error1 : hd_error [] = None.
- (* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 Example test_hd_error2 : hd_error [1] = Some 1.
- (* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 Example test_hd_error3 : hd_error [5;6] = Some 5.
- (* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 (** [] *)
 
@@ -1087,7 +1152,11 @@ Example test_hd_error3 : hd_error [5;6] = Some 5.
 Theorem option_elim_hd : forall (l:natlist) (default:nat),
   hd default l = option_elim default (hd_error l).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros l default.
+  induction l as [| n t LHl'].
+  - simpl. reflexivity.
+  - simpl. reflexivity.  
+Qed.
 (** [] *)
 
 End NatList.
@@ -1121,7 +1190,9 @@ Definition eqb_id (x1 x2 : id) :=
 (** **** Exercise: 1 star, standard (eqb_id_refl) *)
 Theorem eqb_id_refl : forall x, eqb_id x x = true.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros x. destruct x as [n'].
+  simpl.  rewrite eqb_refl. reflexivity.
+Qed.
 (** [] *)
 
 (** Now we define the type of partial maps: *)
@@ -1167,7 +1238,10 @@ Theorem update_eq :
   forall (d : partial_map) (x : id) (v: nat),
     find x (update d x v) = Some v.
 Proof.
- (* FILL IN HERE *) Admitted.
+  intros d x v.
+  simpl. rewrite eqb_id_refl.
+  reflexivity.
+Qed.
 (** [] *)
 
 (** **** Exercise: 1 star, standard (update_neq) *)
@@ -1175,7 +1249,11 @@ Theorem update_neq :
   forall (d : partial_map) (x y : id) (o: nat),
     eqb_id x y = false -> find x (update d y o) = find x d.
 Proof.
- (* FILL IN HERE *) Admitted.
+  intros d x y o.
+  intros h.
+  simpl. rewrite h. reflexivity.
+Qed.
+
 (** [] *)
 End PartialMap.
 
