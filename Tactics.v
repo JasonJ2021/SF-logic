@@ -870,7 +870,7 @@ Abort.
 Fact silly_fact_2 : forall m, bar m + 1 = bar (m + 1) + 1.
 Proof.
   intros m.
-  destruct m eqn:E.
+  destruct m as [| m']eqn:E.
   - simpl. reflexivity.
   - simpl. reflexivity.
 Qed.
@@ -955,7 +955,7 @@ Theorem combine_split : forall X Y (l : list (X * Y)) l1 l2,
   split l = (l1, l2) ->
   combine l1 l2 = l.
 Proof.
-  (* FILL IN HERE *) Admitted.
+Admitted.
 (** [] *)
 
 (** The [eqn:] part of the [destruct] tactic is optional; although
