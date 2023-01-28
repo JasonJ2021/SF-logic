@@ -283,7 +283,10 @@ Qed.
 Theorem ev_double : forall n,
   ev (double n).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n. induction n as [| n' IHn'].
+  - simpl. apply ev_0.
+  - simpl. apply ev_SS. apply IHn'.  
+Qed.
 (** [] *)
 
 (* ################################################################# *)
@@ -403,7 +406,9 @@ Proof.
 Theorem SSSSev__even : forall n,
   ev (S (S (S (S n)))) -> ev n.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n H. inversion H. inversion H1. apply H3.
+Qed.
+
 (** [] *)
 
 (** **** Exercise: 1 star, standard (ev5_nonsense)
@@ -413,7 +418,8 @@ Proof.
 Theorem ev5_nonsense :
   ev 5 -> 2 + 2 = 9.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros. inversion H. inversion H1. inversion H3.
+Qed.
 (** [] *)
 
 (** The [inversion] tactic does quite a bit of work. For
@@ -474,7 +480,7 @@ Proof.
 
   intros n E. inversion E as [EQ' | n' E' EQ'].
   - (* E = ev_0 *) exists 0. reflexivity.
-  - (* E = ev_SS n' E'
+  - (* E = ev_SS n' E' 
 
     Unfortunately, the second case is harder.  We need to show [exists
     n0, S (S n') = double n0], but the only available assumption is
@@ -577,7 +583,10 @@ Qed.
 (** **** Exercise: 2 stars, standard (ev_sum) *)
 Theorem ev_sum : forall n m, ev n -> ev m -> ev (n + m).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n m E1 E2. induction E1 as [ | n' E' IH].
+  - simpl. apply E2.
+  - simpl. apply ev_SS. apply IH.
+Qed.
 (** [] *)
 
 (** **** Exercise: 4 stars, advanced, optional (ev'_ev)
@@ -608,7 +617,10 @@ Theorem ev_ev__ev : forall n m,
   (* Hint: There are two pieces of evidence you could attempt to induct upon
       here. If one doesn't work, try the other. *)
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n m E1 E2. induction E2 as [| n' E' IH].
+  - simpl in E1. apply E1.
+  - simpl in E1. inversion E1. apply IH in H0. apply  H0.   
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars, standard, optional (ev_plus_plus)
@@ -1119,7 +1131,7 @@ Inductive exp_match {T} : list T -> reg_exp T -> Prop :=
 
 Example reg_exp_ex1 : [1] =~ Char 1.
 Proof.
-  apply MChar.
+   apply MChar.
 Qed.
 
 Example reg_exp_ex2 : [1; 2] =~ App (Char 1) (Char 2).
@@ -1192,14 +1204,17 @@ Qed.
 Lemma empty_is_empty : forall T (s : list T),
   ~ (s =~ EmptySet).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros T s H. inversion H.  
+Qed.
 
 Lemma MUnion' : forall T (s : list T) (re1 re2 : reg_exp T),
   s =~ re1 \/ s =~ re2 ->
   s =~ Union re1 re2.
 Proof.
-  (* FILL IN HERE *) Admitted.
-
+  intros T s re1 re2 H. destruct H as [H1 | H2].
+  - apply MUnionL. apply H1.
+  - apply MUnionR. apply H2.  
+Qed.
 (** The next lemma is stated in terms of the [fold] function from the
     [Poly] chapter: If [ss : list (list T)] represents a sequence of
     strings [s1, ..., sn], then [fold app ss []] is the result of
@@ -1209,7 +1224,12 @@ Lemma MStar' : forall T (ss : list (list T)) (re : reg_exp T),
   (forall s, In s ss -> s =~ re) ->
   fold app ss [] =~ Star re.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros T ss re. intros s. induction ss as [ | n t IHl'].
+  - simpl. apply MStar0.
+  - simpl. apply MStarApp.
+   + simpl in s.  apply s. left. reflexivity.
+   + apply IHl'. simpl in s.  intros s0 H. apply s. right. apply H.
+Qed.
 (** [] *)
 
 (** Since the definition of [exp_match] has a recursive
@@ -1297,14 +1317,50 @@ Qed.
     Write a recursive function [re_not_empty] that tests whether a
     regular expression matches some string. Prove that your function
     is correct. *)
+Search and.
 
-Fixpoint re_not_empty {T : Type} (re : reg_exp T) : bool
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+Search (  _ || true).
+
+Fixpoint re_not_empty {T : Type} (re : reg_exp T) : bool :=
+  match re with
+  | EmptySet => false
+  | EmptyStr => true
+  | Char x => true
+  | App re1 re2 => andb (re_not_empty re1) (re_not_empty re2)
+  | Union re1 re2 => orb (re_not_empty re1) (re_not_empty re2)
+  | Star re => true
+  end.
+
+
 
 Lemma re_not_empty_correct : forall T (re : reg_exp T),
   (exists s, s =~ re) <-> re_not_empty re = true.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros T re. split.
+  - intros [s Hmatch]. induction Hmatch
+     as [| x'
+      | s1 re1 s2 re2 Hmatch1 IH1 Hmatch2 IH2
+      | s1 re1 re2 Hmatch IH | re1 s2 re2 Hmatch IH
+      | re | s1 s2 re Hmatch1 IH1 Hmatch2 IH2].
+    + reflexivity.
+    + reflexivity.
+    + simpl. rewrite IH1. rewrite IH2. reflexivity.
+    + simpl. rewrite IH. simpl. reflexivity.       
+    + simpl. rewrite IH.  destruct (re_not_empty re1) as []. reflexivity. reflexivity.
+    + simpl. reflexivity.
+    + simpl. reflexivity. 
+  -  intros . induction re.
+   + simpl in H. discriminate H.
+   + simpl in H. exists []. apply MEmpty.
+   + exists [t]. apply MChar.
+   + simpl in H. rewrite andb_true_iff in H. destruct H as [H1 H2]. apply IHre1 in H1. apply IHre2 in H2. 
+    destruct H1 as  [s1 H1] . destruct H2 as [s2 H2]. exists (s1++s2). 
+    apply MApp. apply H1. apply H2.
+   + inversion H. rewrite orb_true_iff in H1. destruct H1 as [H2 | H3].
+    * apply IHre1 in H2. destruct H2 as [s H2]. exists s. apply MUnionL. apply H2.
+    * apply IHre2 in H3. destruct H3 as [s H3]. exists s. apply MUnionR. apply H3.
+   + exists []. apply MStar0.   
+    Qed.
 (** [] *)
 
 (* ================================================================= *)

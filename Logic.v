@@ -781,6 +781,7 @@ Qed.
 
 Definition Even x := exists n : nat, x = double n.
 
+
 Lemma four_is_Even : Even 4.
 Proof.
   unfold Even. exists 2. reflexivity.
@@ -973,15 +974,32 @@ Qed.
     lemma below.  (Of course, your definition should _not_ just
     restate the left-hand side of [All_In].) *)
 
-Fixpoint All {T : Type} (P : T -> Prop) (l : list T) : Prop
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+Fixpoint All {T : Type} (P : T -> Prop) (l : list T) : Prop :=
+  match l with
+  | [] => True
+  | n::t => P n /\ All P t
+  end.
+
+Check Even.
 
 Theorem All_In :
   forall T (P : T -> Prop) (l : list T),
     (forall x, In x l -> P x) <->
     All P l.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros T P l. split.
+  - intros. induction l as [| n t IHl'].
+   + simpl. apply I. 
+   + simpl. simpl in H. split.
+    ** apply H. left. reflexivity.
+    ** apply IHl'. intros. apply H. right. apply H0.
+  - intros. induction l as [| n t IHl'].
+   + simpl in H. simpl in H0. destruct H0.
+   + simpl in H. simpl in H0. generalize dependent IHl'. intros.
+    destruct H as [H1 H2]. destruct H0 as [H3 | H4].
+    -- rewrite <- H3. apply H1.
+    -- apply IHl'. apply H2. apply H4.  
+Qed.
 (** [] *)
 
 (** **** Exercise: 2 stars, standard, optional (combine_odd_even)
@@ -990,7 +1008,7 @@ Proof.
     It takes as arguments two properties of numbers, [Podd] and
     [Peven], and it should return a property [P] such that [P n] is
     equivalent to [Podd n] when [n] is [odd] and equivalent to [Peven n]
-    otherwise. *)
+    otherwisze. *)
 
 Definition combine_odd_even (Podd Peven : nat -> Prop) : nat -> Prop
   (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
@@ -1081,6 +1099,7 @@ Abort.
     way to work around them by using [assert] to derive a specialized
     version of [add_comm] that can be used to rewrite exactly where
     we want. *)
+(* Compute (forall y z : nat ,add_comm y z). *)
 
 Lemma add_comm3_take2 :
   forall x y z, x + (y + z) = (z + y) + x.
@@ -1102,6 +1121,7 @@ Lemma add_comm3_take3 :
 Proof.
   intros x y z.
   rewrite add_comm.
+  Compute (add_comm y z).
   rewrite (add_comm y z).
   reflexivity.
 Qed.
