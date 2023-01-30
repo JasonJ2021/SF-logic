@@ -36,6 +36,7 @@ From Coq Require Import Logic.FunctionalExtensionality.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
+
 (** Documentation for the standard library can be found at
     https://coq.inria.fr/library/.
 
@@ -78,6 +79,41 @@ Check String.eqb_neq :
 Check String.eqb_spec :
   forall x y : string, reflect (x = y) (String.eqb x y).
 
+Definition eqb_string (x y : string) : bool :=
+  if string_dec x y then true else false.
+
+Theorem eqb_string_refl : forall s : string, true = eqb_string s s.
+Proof.
+  intros s. unfold eqb_string.
+  destruct (string_dec s s) as [Hs_eq | Hs_not_eq].
+  - reflexivity.
+  - destruct Hs_not_eq. reflexivity.
+Qed.
+
+Theorem eqb_string_true_iff : forall x y : string,
+    eqb_string x y = true <-> x = y.
+Proof.
+   intros x y.
+   unfold eqb_string.
+   destruct (string_dec x y) as [Hs_eq | Hs_not_eq].
+   - rewrite Hs_eq. split. reflexivity. reflexivity.
+   - split.
+     + intros contra. discriminate contra.
+     + intros H. rewrite H in Hs_not_eq. destruct Hs_not_eq. reflexivity.
+Qed.
+
+Theorem eqb_string_false_iff : forall x y : string,
+    eqb_string x y = false <-> x <> y.
+Proof.
+  intros x y. rewrite <- eqb_string_true_iff.
+  rewrite not_true_iff_false. reflexivity. Qed.
+
+Theorem false_eqb_string : forall x y : string,
+   x <> y -> eqb_string x y = false.
+Proof.
+  intros x y. rewrite eqb_string_false_iff.
+  intros H. apply H. Qed.
+(* /HIDEFROMHTML *)
 (* ################################################################# *)
 (** * Total Maps *)
 
@@ -187,7 +223,8 @@ Proof. reflexivity. Qed.
 Lemma t_apply_empty : forall (A : Type) (x : string) (v : A),
   (_ !-> v) x = v.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros A x v. reflexivity.
+Qed.
 (** [] *)
 
 (** **** Exercise: 2 stars, standard, optional (t_update_eq)
@@ -199,7 +236,8 @@ Proof.
 Lemma t_update_eq : forall (A : Type) (m : total_map A) x v,
   (x !-> v ; m) x = v.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros A m. intros x v. unfold t_update.  rewrite String.eqb_refl. reflexivity. 
+Qed.
 (** [] *)
 
 (** **** Exercise: 2 stars, standard, optional (t_update_neq)
@@ -208,11 +246,13 @@ Proof.
     look up a _different_ key [x2] in the resulting map, we get the
     same result that [m] would have given: *)
 
+Search (_ <> _).
 Theorem t_update_neq : forall (A : Type) (m : total_map A) x1 x2 v,
   x1 <> x2 ->
   (x1 !-> v ; m) x2 = m x2.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros A m x1 x2 v H. unfold t_update. apply String.eqb_neq in H. rewrite H. reflexivity.      
+Qed.
 (** [] *)
 
 (** **** Exercise: 2 stars, standard, optional (t_update_shadow)
@@ -223,10 +263,13 @@ Proof.
     to any key) as the simpler map obtained by performing just
     the second [update] on [m]: *)
 
+
 Lemma t_update_shadow : forall (A : Type) (m : total_map A) x v1 v2,
   (x !-> v2 ; x !-> v1 ; m) = (x !-> v2 ; m).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros. unfold t_update. apply functional_extensionality. intros x0.
+  destruct ((x =? x0)%string). reflexivity. reflexivity.
+Qed.
 (** [] *)
 
 (** **** Exercise: 2 stars, standard (t_update_same)

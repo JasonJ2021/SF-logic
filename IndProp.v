@@ -1385,7 +1385,6 @@ Proof.
 
     (We can begin by generalizing [s2], since it's pretty clear that we
     are going to have to walk over both [s1] and [s2] in parallel.) *)
-
   generalize dependent s2.
   induction H1
     as [|x'|s1 re1 s2' re2 Hmatch1 IH1 Hmatch2 IH2
@@ -1545,7 +1544,7 @@ Lemma pumping_constant_ge_1 :
 Proof.
   intros T re. induction re.
   - (* EmptySet *)
-    apply le_n.
+    simpl. apply le_n.
   - (* EmptyStr *)
     apply le_n.
   - (* Char *)
@@ -1637,8 +1636,10 @@ Proof.
        | re | s1 s2 re Hmatch1 IH1 Hmatch2 IH2 ].
   - (* MEmpty *)
     simpl. intros contra. inversion contra.
-  (* FILL IN HERE *) Admitted.
-(** [] *)
+  - simpl. intros contra. apply Sn_le_Sm__n_le_m  in contra. inversion contra.
+  - simpl.  
+Admitted.
+    (** [] *)
 
 (** **** Exercise: 5 stars, advanced, optional (pumping)
 
@@ -1684,7 +1685,7 @@ Theorem filter_not_empty_In : forall n l,
 Proof.
   intros n l. induction l as [|m l' IHl'].
   - (* l = [] *)
-    simpl. intros H. apply H. reflexivity.
+    simpl. intros H.  apply H. reflexivity.
   - (* l = m :: l' *)
     simpl. destruct (n =? m) eqn:H.
     + (* n =? m = true *)
@@ -1747,7 +1748,12 @@ Qed.
 (** **** Exercise: 2 stars, standard, especially useful (reflect_iff) *)
 Theorem reflect_iff : forall P b, reflect P b -> (P <-> b = true).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P b H. destruct H as [H1 | H2].
+  - split. intros. reflexivity. intros. apply H1.
+  - split. 
+   + intros. unfold not in H2. apply H2 in H. destruct H.
+   + intros. unfold not in H2.  discriminate H.
+Qed.
 (** [] *)
 
 (** We can think of [reflect] as a kind of variant of the usual "if
