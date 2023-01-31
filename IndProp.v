@@ -406,7 +406,7 @@ Proof.
 Theorem SSSSev__even : forall n,
   ev (S (S (S (S n)))) -> ev n.
 Proof.
-  intros n H. inversion H. inversion H1. apply H3.
+  intros. inversion H. inversion H1. apply H3.
 Qed.
 
 (** [] *)
@@ -1501,7 +1501,7 @@ Lemma MStar'' : forall T (s : list T) (re : reg_exp T),
     s = fold app ss []
     /\ forall s', In s' ss -> s' =~ re.
 Proof.
-  (* FILL IN HERE *) Admitted.
+Admitted.
 (** [] *)
 
 (** **** Exercise: 5 stars, advanced (weak_pumping)
@@ -1568,7 +1568,7 @@ Proof.
   intros T re H.
   assert (Hp1 : pumping_constant re >= 1).
   { apply pumping_constant_ge_1. }
-  inversion Hp1 as [Hp1'| p Hp1' Hp1''].
+  inversion Hp1 as [Hp1'| p Hp1' Hp1'' ].
   - rewrite H in Hp1'. discriminate Hp1'.
   - rewrite H in Hp1''. discriminate Hp1''.
 Qed.
@@ -1636,8 +1636,40 @@ Proof.
        | re | s1 s2 re Hmatch1 IH1 Hmatch2 IH2 ].
   - (* MEmpty *)
     simpl. intros contra. inversion contra.
-  - simpl. intros contra. apply Sn_le_Sm__n_le_m  in contra. inversion contra.
-  - simpl.  
+  - (*MChar*)
+    simpl. intros contra. apply Sn_le_Sm__n_le_m  in contra. inversion contra.
+  - (* MApp Hard ! *) 
+    simpl. intros H. rewrite  app_length in H. apply add_le_cases in H. destruct H as [H1 | H2].
+    + apply IH1 in H1. destruct H1 as [x0 [x1 [x2 H]]]. exists x0. exists x1. exists (x2++s2). split.
+     ** destruct H as  [H _ _]. rewrite H.  rewrite <- app_assoc. rewrite <- app_assoc. reflexivity.
+     ** split. 
+      -- destruct H as [ _ [H1 _]]. apply H1.
+      -- destruct H as [H1 [H2 H3]]. intros m.  assert(H4 :x0 ++ napp m x1 ++ x2 =~ re1 ). apply H3. remember (x0 ++ napp m x1 ++ x2) as s1'. rewrite  app_assoc with (n := s2). rewrite app_assoc. rewrite <- Heqs1'. apply MApp. apply H4. apply Hmatch2.
+    + apply IH2 in H2. destruct H2 as [x0 [x1 [x2 H]]]. exists (s1 ++ x0). exists x1. exists (x2). split.
+      ** destruct H as [H _ _]. rewrite H.  rewrite <- app_assoc. reflexivity.
+      ** split.
+       -- destruct H as [_ [H _]]. apply H.
+       -- destruct H as [_ [_ H]]. intros m. assert (x0 ++ napp m x1 ++ x2 =~ re2). apply H. rewrite <- app_assoc. apply MApp.
+        ++ apply Hmatch1.
+        ++ apply H0.
+    - (* MUnionL *) intros H. simpl in H.  apply plus_le in H. destruct H as [H1 H2]. apply IH in H1. destruct H1 as [x0 [x1 [x2 H1]]]. exists x0. exists x1. exists x2. destruct H1 as [H3 [H4 H5]]. split.
+      + apply H3.
+      + split. 
+        * apply H4.
+        * intros m . apply MUnionL. apply H5.
+    - (* MUnionR*)intros H. simpl in H.  apply plus_le in H. destruct H as [H1 H2]. apply IH in H2. destruct H2 as [x0 [x1 [x2 H2]]]. exists x0. exists x1. exists x2. destruct H2 as [H3 [H4 H5]]. split.
+      + apply H3.
+      + split. 
+        * apply H4.
+        * intros m . apply MUnionR. apply H5.
+    - (* MStar0 *)  intros. simpl in H.  inversion H. apply pumping_constant_0_false in H1. destruct H1.
+    - (* MStarApp*) simpl in IH2. intros. simpl in H. rewrite app_length in H.  destruct s1 as [ | n t IHl'].
+     + simpl. simpl in H. apply IH2 in H.  apply H.
+     + simpl. exists []. exists (n::t). exists s2.  split.
+      * simpl. reflexivity.
+      * split.
+       -- unfold "<>". intros. discriminate H0.
+       -- simpl. remember (n::t) as s1. intros. apply (napp_star T m s1 s2 re). apply Hmatch1. apply Hmatch2.
 Admitted.
     (** [] *)
 
@@ -1812,8 +1844,14 @@ Theorem eqbP_practice : forall n l,
   count n l = 0 -> ~(In n l).
 Proof.
   intros n l Hcount. induction l as [| m l' IHl'].
-  (* FILL IN HERE *) Admitted.
-(** [] *)
+  - simpl. unfold not. intros . apply H.
+  - simpl. simpl in Hcount. destruct (eqbP n m) as [H | H].
+   + simpl in Hcount. discriminate Hcount.
+   + simpl in Hcount. apply IHl' in Hcount. unfold not. unfold not in Hcount. intros. destruct H0 as [H1 | H2].
+    * unfold "<>" in H. symmetry in H1. apply H in H1. destruct H1.
+    * apply Hcount in H2. destruct H2. 
+Qed.
+  (** [] *)
 
 (** This small example shows reflection giving us a small gain in
     convenience; in larger developments, using [reflect] consistently
@@ -1846,7 +1884,10 @@ Proof.
 
 Inductive nostutter {X:Type} : list X -> Prop :=
  (* FILL IN HERE *)
-.
+  | nilList : nostutter []
+  | ListOfOne (x : X) : nostutter [x]
+  | ListOfMore (x  y : X) (nt : list X) (H1 : x <> y) (H2 : nostutter (y::nt)) : nostutter (x::y::nt) 
+ .
 (** Make sure each of these tests succeeds, but feel free to change
     the suggested proof (in comments) if the given one doesn't work
     for you.  Your definition might be different from ours and still
@@ -1858,34 +1899,28 @@ Inductive nostutter {X:Type} : list X -> Prop :=
     example with more basic tactics.)  *)
 
 Example test_nostutter_1: nostutter [3;1;4;1;5;6].
-(* FILL IN HERE *) Admitted.
-(* 
-  Proof. repeat constructor; apply eqb_neq; auto.
-  Qed.
-*)
+Proof. repeat constructor; apply eqb_neq; auto.
+Qed.
+
+ 
+
 
 Example test_nostutter_2:  nostutter (@nil nat).
-(* FILL IN HERE *) Admitted.
-(* 
-  Proof. repeat constructor; apply eqb_neq; auto.
-  Qed.
-*)
+Proof. repeat constructor; apply eqb_neq; auto.
+Qed.
+
 
 Example test_nostutter_3:  nostutter [5].
-(* FILL IN HERE *) Admitted.
-(* 
-  Proof. repeat constructor; auto. Qed.
-*)
+Proof. repeat constructor; auto. Qed.
+
 
 Example test_nostutter_4:      not (nostutter [3;1;1;4]).
-(* FILL IN HERE *) Admitted.
-(* 
-  Proof. intro.
-  repeat match goal with
-    h: nostutter _ |- _ => inversion h; clear h; subst
-  end.
-  contradiction; auto. Qed.
-*)
+Proof. intro.
+repeat match goal with
+  h: nostutter _ |- _ => inversion h; clear h; subst
+end.
+contradiction; auto. Qed.
+
 
 (* Do not modify the following line: *)
 Definition manual_grade_for_nostutter : option (nat*string) := None.

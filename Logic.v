@@ -481,8 +481,8 @@ Definition manual_grade_for_double_neg_inf : option (nat*string) := None.
 Theorem contrapositive : forall (P Q : Prop),
   (P -> Q) -> (~Q -> ~P).
 Proof.
-  intros P Q H.
-  unfold not. intros H1 H2. apply H in H2. apply H1 in H2. destruct H2.
+  intros. unfold not in H0. unfold not.  intros. apply H in  H1. apply H0 in H1. destruct H1.
+   
 Qed.
 (** [] *)
 
@@ -1290,6 +1290,7 @@ Proof.
   apply functional_extensionality. intros x.
   apply add_comm.
 Qed.
+Search rev.
 
 (** Naturally, we must be careful when adding new axioms into Coq's
     logic, as this can render it _inconsistent_ -- that is, it may
@@ -1342,10 +1343,23 @@ Definition tr_rev {X} (l : list X) : list X :=
     code in this case.
 
     Prove that the two definitions are indeed equivalent. *)
+Search ([]++ _).
 
 Theorem tr_rev_correct : forall X, @tr_rev X = @rev X.
 Proof.
-(* FILL IN HERE *) Admitted.
+  intros X. apply functional_extensionality.
+  intros x. induction x as [ | n t IHl'].
+  - unfold tr_rev. simpl. reflexivity.
+  - unfold tr_rev. simpl. rewrite <- IHl'. unfold tr_rev.      
+    assert (H : forall X (l1 l2 : list X) , rev_append l1 l2 = rev_append l1 [] ++ l2).
+    {
+      intros X0 . induction l1 as [ | n' t' IHl''].
+      - simpl. reflexivity.
+      - simpl. rewrite IHl''. intros. rewrite <- app_assoc. simpl. apply IHl''. 
+    }
+    (*intros尽可能少，不失去一般性*)
+  apply H.
+Qed.
 (** [] *)
 
 (* ================================================================= *)
@@ -1418,13 +1432,21 @@ Proof.
   - simpl. apply IHk'.
 Qed.
 
+Check (even 3).
 (** **** Exercise: 3 stars, standard (even_double_conv) *)
 Lemma even_double_conv : forall n, exists k,
   n = if even n then double k else S (double k).
 Proof.
-  (* Hint: Use the [even_S] lemma from [Induction.v]. *)
-  (* FILL IN HERE *) Admitted.
-(** [] *)
+  (* Hint: Use the [even_S] lemma from [Induction.v]. 
+  forall n : nat,
+  even (S n) = negb (even n).*)
+  intros. induction n as [ | n']. 
+  - simpl. exists 0. reflexivity.
+  - rewrite even_S. destruct IHn' as  [k H] .  destruct (even n') eqn:E.
+   + simpl. exists k. rewrite H. reflexivity.
+   + simpl. exists (S(k)). rewrite H. simpl. reflexivity.
+Qed.
+  (** [] *)
 
 (** Now the main theorem: *)
 Theorem even_bool_prop : forall n,
@@ -1587,12 +1609,22 @@ Qed.
 Theorem andb_true_iff : forall b1 b2:bool,
   b1 && b2 = true <-> b1 = true /\ b2 = true.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros b1 b2. split.
+  - intros. destruct b1.
+   + destruct b2. 
+    * simpl in H. split. apply H. apply H.
+    * simpl in H. discriminate H.
+   + destruct b2. discriminate H. discriminate H.
+  - intros. destruct b1.
+   + destruct b2. destruct H as [H _]. simpl. apply H. destruct H as [_ H]. discriminate H.
+   + destruct b2. destruct H as [H _]. simpl. apply H. destruct H as [H _]. discriminate H.
+Qed.
 
 Theorem orb_true_iff : forall b1 b2,
   b1 || b2 = true <-> b1 = true \/ b2 = true.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  Admitted.
+
 (** [] *)
 
 (** **** Exercise: 1 star, standard (eqb_neq)
@@ -1604,7 +1636,8 @@ Proof.
 Theorem eqb_neq : forall x y : nat,
   x =? y = false <-> x <> y.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros. rewrite <- not_true_iff_false. rewrite <- eqb_eq. reflexivity.
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars, standard (eqb_list)
@@ -1616,15 +1649,38 @@ Proof.
     definition is correct, prove the lemma [eqb_list_true_iff]. *)
 
 Fixpoint eqb_list {A : Type} (eqb : A -> A -> bool)
-                  (l1 l2 : list A) : bool
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+                  (l1 l2 : list A) : bool :=
+  match l1 with
+  | [] => match l2 with 
+          | [] => true
+          | _ => false
+          end
+  | a1::t1 => match l2 with 
+          | [] => false
+          | a2::t2 => andb (eqb a1 a2) (eqb_list eqb t1 t2)                
+          end
+  end.
 
 Theorem eqb_list_true_iff :
   forall A (eqb : A -> A -> bool),
     (forall a1 a2, eqb a1 a2 = true <-> a1 = a2) ->
     forall l1 l2, eqb_list eqb l1 l2 = true <-> l1 = l2.
 Proof.
-(* FILL IN HERE *) Admitted.
+  intros A eqb. intros H. intros l1. induction l1 as [ | n1 t1 IHl1'].
+  - destruct l2.
+   + simpl. split. reflexivity. reflexivity.
+   + simpl. split. intros. discriminate. intros. discriminate.
+  - destruct l2. 
+   + simpl. split. 
+    * discriminate.
+    * intros. discriminate.
+   + simpl. split.
+    * intros. apply andb_true_iff in H0. destruct H0 as [H1 H2].
+    apply H in H1. apply IHl1' in H2. rewrite H2. rewrite H1. reflexivity.
+    * intros. inversion H0. apply andb_true_iff. split.
+     -- apply H. reflexivity.
+     -- rewrite H3 in IHl1'. apply IHl1'. reflexivity.
+Qed.
 
 (** [] *)
 
@@ -1636,13 +1692,30 @@ Proof.
 
 (** Copy the definition of [forallb] from your [Tactics] here
     so that this file can be graded on its own. *)
-Fixpoint forallb {X : Type} (test : X -> bool) (l : list X) : bool
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+Fixpoint forallb {X : Type} (test : X -> bool) (l : list X) : bool :=
+  match l with
+  | [] => true
+  | x :: l' => andb (test x) (forallb test l')
+  end.
 
 Theorem forallb_true_iff : forall X test (l : list X),
   forallb test l = true <-> All (fun x => test x = true) l.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X test l . split.
+  - intros. induction l as [ | n t IHl'].
+   + simpl. apply I.
+   + simpl. simpl in H. apply andb_true_iff in H. destruct H as [H1 H2].
+    split.
+    -- apply H1.
+    -- apply IHl' in H2. apply H2.
+  - intros. induction l as [ | n t IHl'].
+    + simpl. reflexivity.
+    + simpl in H. destruct H as [H1 H2]. simpl. apply IHl' in H2. apply andb_true_iff.
+     split.
+     -- apply H1.
+     -- apply H2.
+          
+Qed.
 
 (** (Ungraded thought question) Are there any important properties of
     the function [forallb] which are not captured by this
