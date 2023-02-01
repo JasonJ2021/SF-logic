@@ -304,7 +304,7 @@ Proof.
     (* ... but the remaining cases -- ANum and APlus --
        are different: *)
   - (* ANum *) reflexivity.
-  - (* APlus *)
+  -  (* APlus *)
     destruct a1 eqn:Ea1;
       (* Again, most cases follow directly by the IH: *)
       try (simpl; simpl in IHa1; rewrite IHa1;
@@ -847,14 +847,35 @@ Qed.
 
 Reserved Notation "e '==>b' b" (at level 90, left associativity).
 Inductive bevalR: bexp -> bool -> Prop :=
-(* FILL IN HERE *)
+  | E_BTrue  :  BTrue ==>b true
+  | E_BFalse :  BFalse ==>b false
+  | E_BEq (a1 a2 : aexp) (n1 n2 : nat) : (a1 ==> n1) -> (a2 ==> n2) -> (BEq a1 a2) ==>b (n1 =? n2)
+  | E_BNeq (a1 a2 : aexp) (n1 n2 : nat) : (a1 ==> n1) -> (a2 ==> n2) -> (BNeq a1 a2) ==>b negb (n1 =? n2)
+  | E_BLe (a1 a2 : aexp) (n1 n2 : nat) : (a1 ==> n1) -> (a2 ==> n2) -> (BLe a1 a2) ==>b (n1 <=? n2)
+  | E_BGt (a1 a2 : aexp) (n1 n2 : nat) : (a1 ==> n1) -> (a2 ==> n2) -> (BGt a1 a2) ==>b negb (n1 <=? n2)
+  | E_BNot (be_1 : bexp) (b : bool) : be_1 ==>b b -> (BNot be_1) ==>b (negb b)
+  | E_BAnd (be_1 be_2 : bexp) (b1 b2 : bool) : be_1 ==>b b1 -> be_2 ==>b b2 -> (BAnd be_1 be_2) ==>b (andb b1 b2) 
 where "e '==>b' b" := (bevalR e b) : type_scope
 .
 
 Lemma beval_iff_bevalR : forall b bv,
   b ==>b bv <-> beval b = bv.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros. split.
+  - intros H. induction H;simpl;
+    try reflexivity ;try ( apply aeval_iff_aevalR in H; apply aeval_iff_aevalR in H0; rewrite H; rewrite H0; reflexivity).
+    + rewrite IHbevalR. reflexivity.
+    + rewrite IHbevalR1. rewrite IHbevalR2. reflexivity.
+  - intros H. generalize dependent bv.  induction b;simpl;intros;subst.
+    + apply E_BTrue.
+    + apply E_BFalse.
+    + intros. apply E_BEq. apply aeval_iff_aevalR. reflexivity. apply aeval_iff_aevalR. reflexivity.
+    + apply E_BNeq;apply aeval_iff_aevalR;reflexivity.
+    + apply E_BLe;apply aeval_iff_aevalR;reflexivity.
+    + apply E_BGt;apply aeval_iff_aevalR;reflexivity.
+    + apply E_BNot. apply IHb. reflexivity.
+    + apply E_BAnd. apply IHb1. reflexivity. apply IHb2. reflexivity.
+Qed.
 (** [] *)
 
 End AExp.

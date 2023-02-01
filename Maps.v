@@ -79,40 +79,6 @@ Check String.eqb_neq :
 Check String.eqb_spec :
   forall x y : string, reflect (x = y) (String.eqb x y).
 
-Definition eqb_string (x y : string) : bool :=
-  if string_dec x y then true else false.
-
-Theorem eqb_string_refl : forall s : string, true = eqb_string s s.
-Proof.
-  intros s. unfold eqb_string.
-  destruct (string_dec s s) as [Hs_eq | Hs_not_eq].
-  - reflexivity.
-  - destruct Hs_not_eq. reflexivity.
-Qed.
-
-Theorem eqb_string_true_iff : forall x y : string,
-    eqb_string x y = true <-> x = y.
-Proof.
-   intros x y.
-   unfold eqb_string.
-   destruct (string_dec x y) as [Hs_eq | Hs_not_eq].
-   - rewrite Hs_eq. split. reflexivity. reflexivity.
-   - split.
-     + intros contra. discriminate contra.
-     + intros H. rewrite H in Hs_not_eq. destruct Hs_not_eq. reflexivity.
-Qed.
-
-Theorem eqb_string_false_iff : forall x y : string,
-    eqb_string x y = false <-> x <> y.
-Proof.
-  intros x y. rewrite <- eqb_string_true_iff.
-  rewrite not_true_iff_false. reflexivity. Qed.
-
-Theorem false_eqb_string : forall x y : string,
-   x <> y -> eqb_string x y = false.
-Proof.
-  intros x y. rewrite eqb_string_false_iff.
-  intros H. apply H. Qed.
 (* /HIDEFROMHTML *)
 (* ################################################################# *)
 (** * Total Maps *)
@@ -223,7 +189,7 @@ Proof. reflexivity. Qed.
 Lemma t_apply_empty : forall (A : Type) (x : string) (v : A),
   (_ !-> v) x = v.
 Proof.
-  intros A x v. reflexivity.
+  intros. unfold "'_' '!->' v". reflexivity.
 Qed.
 (** [] *)
 
@@ -236,7 +202,7 @@ Qed.
 Lemma t_update_eq : forall (A : Type) (m : total_map A) x v,
   (x !-> v ; m) x = v.
 Proof.
-  intros A m. intros x v. unfold t_update.  rewrite String.eqb_refl. reflexivity. 
+  intros. unfold " x '!->' v ';' m". rewrite String.eqb_refl. reflexivity.
 Qed.
 (** [] *)
 
@@ -251,7 +217,7 @@ Theorem t_update_neq : forall (A : Type) (m : total_map A) x1 x2 v,
   x1 <> x2 ->
   (x1 !-> v ; m) x2 = m x2.
 Proof.
-  intros A m x1 x2 v H. unfold t_update. apply String.eqb_neq in H. rewrite H. reflexivity.      
+  intros.   unfold " x1 '!->' v ';' m". apply String.eqb_neq in H. rewrite H. reflexivity. 
 Qed.
 (** [] *)
 
@@ -267,8 +233,10 @@ Qed.
 Lemma t_update_shadow : forall (A : Type) (m : total_map A) x v1 v2,
   (x !-> v2 ; x !-> v1 ; m) = (x !-> v2 ; m).
 Proof.
-  intros. unfold t_update. apply functional_extensionality. intros x0.
-  destruct ((x =? x0)%string). reflexivity. reflexivity.
+  intros. apply functional_extensionality_dep. 
+  intros x0. destruct (x =? x0)%string eqn:E.
+  - unfold t_update. rewrite E. reflexivity.
+  - unfold t_update. rewrite E. reflexivity.
 Qed.
 (** [] *)
 
@@ -286,7 +254,11 @@ Qed.
 Theorem t_update_same : forall (A : Type) (m : total_map A) x,
   (x !-> m x ; m) = m.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros. apply functional_extensionality_dep. intros. 
+  destruct (eqb_spec x x0) as [H | H].
+  - unfold t_update. rewrite H. rewrite String.eqb_refl. reflexivity.
+  - unfold t_update. apply String.eqb_neq in H. rewrite H. reflexivity.
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars, standard, especially useful (t_update_permute)
@@ -302,7 +274,15 @@ Theorem t_update_permute : forall (A : Type) (m : total_map A)
   =
   (x2 !-> v2 ; x1 !-> v1 ; m).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros. apply functional_extensionality_dep. intros.
+  destruct (eqb_spec x1 x) as [H1 | H1].
+  - destruct (eqb_spec x2 x) as [H2 | H2].
+   + unfold t_update. rewrite H1. rewrite H2. unfold "<>" in H. rewrite <- H1 in H2. apply H in H2. destruct H2. 
+   + unfold t_update. apply String.eqb_eq in H1. rewrite H1. apply String.eqb_neq in H2. rewrite H2. reflexivity.
+  - destruct (eqb_spec x2 x) as [H2 | H2].
+   + unfold t_update. apply String.eqb_eq in H2. apply String.eqb_neq in H1. rewrite H1. rewrite H2. reflexivity.
+   + unfold t_update. apply String.eqb_neq in H1. apply String.eqb_neq in H2. rewrite H1. rewrite H2. reflexivity. 
+Qed.
 (** [] *)
 
 (* ################################################################# *)
