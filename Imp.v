@@ -1237,6 +1237,7 @@ Definition fact_in_coq : com :=
      end }>.
 
 Print fact_in_coq.
+Locate "in".
 
 (* ================================================================= *)
 (** ** Desugaring Notations *)
@@ -1563,7 +1564,12 @@ Example ceval_example2:
     Z := 2
   ]=> (Z !-> 2 ; Y !-> 1 ; X !-> 0).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  apply E_Seq with (X !-> 0).
+  - apply E_Asgn. reflexivity.
+  - apply E_Seq with (Y !-> 1 ; X !-> 0).
+   + apply E_Asgn. reflexivity.
+   + apply E_Asgn. reflexivity.
+Qed.
 (** [] *)
 
 Set Printing Implicit.
@@ -1577,15 +1583,34 @@ Check @ceval_example2.
     which you can reverse-engineer to discover the program you should
     write.  The proof of that theorem will be somewhat lengthy. *)
 
-Definition pup_to_n : com
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
-
+Definition pup_to_n : com :=
+  <{
+    Y := 0;
+    while X <> 0 do 
+      Y := Y + X;
+      X := X - 1
+    end
+  }>.
 Theorem pup_to_2_ceval :
   (X !-> 2) =[
     pup_to_n
   ]=> (X !-> 0 ; Y !-> 3 ; X !-> 1 ; Y !-> 2 ; Y !-> 0 ; X !-> 2).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  unfold pup_to_n.
+  apply E_Seq with (Y !-> 0 ; X !->2).
+  - apply E_Asgn. reflexivity.
+  - apply E_WhileTrue with ( st' := X !-> 1;Y !-> 2;Y !-> 0; X !-> 2 ).
+    + simpl. reflexivity.
+    + apply E_Seq with (Y !-> 2; Y !-> 0; X !-> 2).
+     * apply E_Asgn. reflexivity.
+     * apply E_Asgn. reflexivity.
+    + apply E_WhileTrue with ( st' := X !-> 0; Y !-> 3;X !-> 1;Y !-> 2;Y !-> 0; X !-> 2 ).
+     * reflexivity.
+     * apply E_Seq with (Y !-> 3; X !-> 1; Y !-> 2; Y !-> 0; X !-> 2).
+      -- apply E_Asgn. reflexivity.
+      -- apply E_Asgn. reflexivity.
+     * apply E_WhileFalse. reflexivity.
+Qed.
 (** [] *)
 
 (* ================================================================= *)
@@ -1673,14 +1698,16 @@ Theorem loop_never_stops : forall st st',
 Proof.
   intros st st' contra. unfold loop in contra.
   remember <{ while true do skip end }> as loopdef
-           eqn:Heqloopdef.
+           eqn:Heqloopdef. induction contra;try discriminate.
+  - inversion Heqloopdef. rewrite H1 in H. simpl in H. discriminate.
+  - inversion Heqloopdef. rewrite H1 in IHcontra2. rewrite H2 in IHcontra2. apply IHcontra2. reflexivity.  
+Qed.              
 
   (** Proceed by induction on the assumed derivation showing that
       [loopdef] terminates.  Most of the cases are immediately
       contradictory and so can be solved in one step with
       [discriminate]. *)
 
-  (* FILL IN HERE *) Admitted.
 (** [] *)
 
 (** **** Exercise: 3 stars, standard (no_whiles_eqv)
@@ -1707,13 +1734,31 @@ Fixpoint no_whiles (c : com) : bool :=
     while loops.  Then prove its equivalence with [no_whiles]. *)
 
 Inductive no_whilesR: com -> Prop :=
- (* FILL IN HERE *)
+  | E_NWskip : no_whilesR <{ skip }>
+  | E_NWasgn : forall a x , no_whilesR <{ x := a}>
+  | E_NWseq : forall c1 c2 , no_whilesR c1 -> no_whilesR c2 -> no_whilesR <{ c1 ; c2 }>
+  | E_NWif : forall b ct cf , no_whilesR ct -> no_whilesR cf -> no_whilesR <{ if b then ct else cf end }>
 .
 
 Theorem no_whiles_eqv:
   forall c, no_whiles c = true <-> no_whilesR c.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros. split. 
+  - induction c.
+    + intros. apply E_NWskip.
+    + intros. apply E_NWasgn.
+    + intros. apply E_NWseq.
+     * simpl in H. apply andb_true_iff in H. destruct H as [H1 H2]. apply IHc1 in H1. apply H1.
+     * simpl in H. apply andb_true_iff in H. destruct H as [H1 H2]. apply IHc2 in H2. apply H2.
+    + simpl. intros. apply andb_true_iff in H. destruct H as [H1 H2]. apply E_NWif.
+     * apply IHc1 in H1. apply H1.
+     * apply IHc2 in H2. apply H2. 
+    + intros. simpl in H. discriminate H.
+  - intros. induction c;try (simpl;reflexivity).
+   + simpl. inversion H. apply IHc1 in H2. apply IHc2 in H3. rewrite H2. rewrite H3. reflexivity.
+   + simpl. inversion H. apply IHc1 in H2. apply IHc2 in H4. rewrite H2. rewrite H4. reflexivity.
+   + simpl. inversion H.    
+Qed.
 (** [] *)
 
 (** **** Exercise: 4 stars, standard (no_whiles_terminating)
@@ -1794,8 +1839,26 @@ Inductive sinstr : Type :=
 
 Fixpoint s_execute (st : state) (stack : list nat)
                    (prog : list sinstr)
-                 : list nat
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+                 : list nat :=
+  match prog with 
+  | [] => stack
+  | n::t => match n with
+            | SPush n => s_execute st ([n] ++ stack) t
+            | SLoad x => s_execute st ([st x] ++ stack) t
+            | SPlus => match stack with
+                      | n1::n2::t' => s_execute st ([n2 + n1] ++ t') t
+                      | _          => s_execute st stack t
+                      end
+            | SMinus => match stack with
+                      | n1::n2::t' => s_execute st ([n2 - n1] ++ t') t
+                      | _          => s_execute st stack t
+                      end
+            | SMult => match stack with
+                      | n1::n2::t' => s_execute st ([n2 * n1] ++ t') t
+                      | _          => s_execute st stack t
+                      end
+            end
+  end.
 
 Check s_execute.
 
@@ -1803,20 +1866,26 @@ Example s_execute1 :
      s_execute empty_st []
        [SPush 5; SPush 3; SPush 1; SMinus]
    = [2; 5].
-(* FILL IN HERE *) Admitted.
-
+Proof. simpl. reflexivity. Qed.
 Example s_execute2 :
      s_execute (X !-> 3) [3;4]
        [SPush 4; SLoad X; SMult; SPlus]
    = [15; 4].
-(* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 (** Next, write a function that compiles an [aexp] into a stack
     machine program. The effect of running the program should be the
     same as pushing the value of the expression on the stack. *)
 
-Fixpoint s_compile (e : aexp) : list sinstr
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+Fixpoint s_compile (e : aexp) : list sinstr :=
+  match e with
+  | ANum n => [SPush n] 
+  | AId x => [SLoad x]
+  | APlus a1 a2 => (s_compile a1) ++ (s_compile a2) ++ [SPlus]
+  | AMinus a1 a2 => (s_compile a1) ++ (s_compile a2) ++ [SMinus]
+  | AMult a1 a2 => (s_compile a1) ++ (s_compile a2) ++ [SMult]
+  end.
+
 
 (** After you've defined [s_compile], prove the following to test
     that it works. *)
@@ -1824,8 +1893,8 @@ Fixpoint s_compile (e : aexp) : list sinstr
 Example s_compile1 :
   s_compile <{ X - (2 * Y) }>
   = [SLoad X; SPush 2; SLoad Y; SMult; SMinus].
-(* FILL IN HERE *) Admitted.
-(** [] *)
+Proof. simpl. reflexivity. Qed.
+  (** [] *)
 
 (** **** Exercise: 3 stars, standard (execute_app) *)
 
@@ -1833,11 +1902,24 @@ Example s_compile1 :
     stack program [p1 ++ p2] is the same as executing [p1], taking
     the resulting stack, and executing [p2] from that stack. Prove
     that fact. *)
-
+Check s_execute.
 Theorem execute_app : forall st p1 p2 stack,
   s_execute st stack (p1 ++ p2) = s_execute st (s_execute st stack p1) p2.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  induction p1.
+   - simpl. reflexivity.
+   - destruct a; simpl;intros;destruct stack as [ | x' [ | y stack']];try (rewrite IHp1);reflexivity.   
+    (* + simpl. intros. rewrite IHp1. reflexivity.
+    + simpl. intros. rewrite IHp1. reflexivity.
+    + destruct stack as [ | x [ | y stack']].
+     * simpl. apply IHp1.
+     * simpl. apply IHp1.
+     * simpl. apply IHp1.
+    +destruct stack as [ | x [ | y stack']].
+     * simpl. apply IHp1.
+     * simpl. apply IHp1.
+     * simpl. apply IHp1. *)
+Qed.
 
 (** [] *)
 
@@ -1851,15 +1933,16 @@ Proof.
 Lemma s_compile_correct_aux : forall st e stack,
   s_execute st stack (s_compile e) = aeval st e :: stack.
 Proof.
-  (* FILL IN HERE *) Admitted.
-
+  induction e;simpl;try reflexivity;intros; simpl;repeat rewrite execute_app; rewrite IHe1;rewrite IHe2; reflexivity.
+  
+Qed.
 (** The main theorem should be a very easy corollary of that lemma. *)
 
 Theorem s_compile_correct : forall (st : state) (e : aexp),
   s_execute st [] (s_compile e) = [ aeval st e ].
 Proof.
-  (* FILL IN HERE *) Admitted.
-
+  intros. rewrite s_compile_correct_aux. reflexivity.
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars, standard, optional (short_circuit)
